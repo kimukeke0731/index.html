@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>履歴書・職務経歴書 作成フォーム</title>
+<script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --blue: #185FA5; --blue-dark: #0C447C; --green: #0F6E56; --green-dark: #085041;
+    --bg: #f5f5f3; --surface: #ffffff; --border: #e0ddd6; --border2: #c8c5be;
+    --text: #1a1a18; --text2: #5f5e5a; --text3: #888780;
+    --radius: 10px; --radius-sm: 6px;
+  }
+  body { font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; min-height: 100vh; }
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; }
+  .header-logo { width: 32px; height: 32px; background: var(--blue); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; }
+  .header h1 { font-size: 16px; font-weight: 600; }
+  .header p { font-size: 12px; color: var(--text2); margin-top: 1px; }
+  .container { max-width: 760px; margin: 0 auto; padding: 24px 16px 60px; }
+  .progress { display: flex; gap: 0; margin-bottom: 28px; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
+  .progress-step { flex: 1; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text3); cursor: pointer; transition: all 0.15s; border-right: 1px solid var(--border); position: relative; }
+  .progress-step:last-child { border-right: none; }
+  .progress-step.active { background: var(--blue); color: white; font-weight: 500; }
+  .progress-step.done { background: #e6f1fb; color: var(--blue); }
+  .progress-step.active::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--blue); }
+  .card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 24px; margin-bottom: 16px; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .row { display: grid; gap: 12px; margin-bottom: 12px; }
+  .row-2 { grid-template-columns: 1fr 1fr; }
+  .row-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  label { font-size: 12px; color: var(--text2); font-weight: 500; }
+  input, select, textarea {
+    font-family: inherit; font-size: 14px; padding: 9px 12px;
+    border: 1px solid var(--border2); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text); width: 100%;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(24,95,165,0.12); }
+  textarea { resize: vertical; min-height: 90px; }
+  .entry-card { background: var(--bg); border-radius: var(--radius-sm); border: 1px solid var(--border); padding: 14px; margin-bottom: 10px; position: relative; }
+  .remove-btn { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border2); background: var(--surface); color: var(--text2); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .remove-btn:hover { background: #fcebeb; border-color: #f09595; color: #A32D2D; }
+  .add-btn { width: 100%; border: 1.5px dashed var(--border2); background: none; padding: 10px; border-radius: var(--radius-sm); font-size: 13px; color: var(--text2); cursor: pointer; transition: all 0.15s; font-family: inherit; }
+  .add-btn:hover { background: var(--bg); color: var(--text); border-color: var(--blue); }
+  .skill-input-row { display: flex; gap: 8px; }
+  .skill-input-row input { flex: 1; }
+  .skill-add-btn { padding: 9px 16px; border: 1px solid var(--border2); background: none; border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; color: var(--text); font-family: inherit; white-space: nowrap; transition: all 0.15s; }
+  .skill-add-btn:hover { background: var(--bg); border-color: var(--blue); }
+  .skill-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .skill-tag { background: #e6f1fb; border: 1px solid #b5d4f4; padding: 4px 10px; border-radius: 99px; font-size: 12px; color: #185FA5; display: flex; align-items: center; gap: 5px; }
+  .skill-tag button { background: none; border: none; cursor: pointer; color: #378ADD; font-size: 14px; line-height: 1; padding: 0; }
+  .nav-row { display: flex; gap: 10px; margin-top: 20px; }
+  .btn { padding: 11px 20px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.15s; border: 1px solid var(--border2); background: var(--surface); color: var(--text); }
+  .btn:hover { background: var(--bg); }
+  .btn-primary { background: var(--blue); color: white; border-color: var(--blue); flex: 1; }
+  .btn-primary:hover { background: var(--blue-dark); }
+  .btn-green { background: var(--green); color: white; border-color: var(--green); flex: 1; }
+  .btn-green:hover { background: var(--green-dark); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .status-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 24px; display: flex; align-items: center; gap: 10px; z-index: 200; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border2); flex-shrink: 0; }
+  .status-dot.saving { background: #EF9F27; animation: pulse 1s infinite; }
+  .status-dot.saved { background: #639922; }
+  .status-dot.error { background: #E24B4A; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  #status-text { font-size: 12px; color: var(--text2); }
+  .toast { position: fixed; top: 80px; right: 20px; background: #1a1a18; color: white; padding: 10px 16px; border-radius: var(--radius-sm); font-size: 13px; opacity: 0; transition: opacity 0.2s; z-index: 300; }
+  .toast.show { opacity: 1; }
+  .required { color: #E24B4A; margin-left: 2px; }
+  @media (max-width: 500px) { .row-2, .row-3 { grid-template-columns: 1fr; } .progress-step { font-size: 10px; padding: 8px 4px; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">📄</div>
+  <div>
+    <h1>履歴書・職務経歴書 作成フォーム</h1>
+    <p>入力内容は自動でAirtableに保存されます</p>
+  </div>
+</div>
+
+<div class="container">
+  <div class="progress">
+    <div class="progress-step active" onclick="goTo(0)">① 基本情報</div>
+    <div class="progress-step" onclick="goTo(1)">② 学歴・資格</div>
+    <div class="progress-step" onclick="goTo(2)">③ 職務経歴</div>
+    <div class="progress-step" onclick="goTo(3)">④ スキル・PR</div>
+    <div class="progress-step" onclick="goTo(4)">⑤ 確認・出力</div>
+  </div>
+
+  <!-- Step 0: 基本情報 -->
+  <div id="panel-0" class="panel active">
+    <div class="card">
+      <div class="card-title">氏名・連絡先</div>
+      <div class="row row-2">
+        <div class="field"><label>氏名（漢字）<span class="required">*</span></label><input id="name" placeholder="山田 太郎"></div>
+        <div class="field"><label>氏名（ふりがな）</label><input id="name_kana" placeholder="やまだ たろう"></div>
+      </div>
+      <div class="row row-3">
+        <div class="field"><label>生年月日</label><input type="date" id="birth_date"></div>
+        <div class="field"><label>性別</label><select id="gender"><option value="">—</option><option>男性</option><option>女性</option><option>その他</option><option>回答しない</option></select></div>
+        <div class="field"><label>電話番号</label><input id="phone" placeholder="090-0000-0000"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>メールアドレス<span class="required">*</span></label><input type="email" id="email" placeholder="example@email.com"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">住所</div>
+      <div class="row row-2">
+        <div class="field"><label>郵便番号</label><input id="zip" placeholder="000-0000"></div>
+        <div class="field"><label>都道府県</label><select id="pref"><option value="">選択</option><option>北海道</option><option>青森県</option><option>岩手県</option><option>宮城県</option><option>秋田県</option><option>山形県</option><option>福島県</option><option>茨城県</option><option>栃木県</option><option>群馬県</option><option>埼玉県</option><option>千葉県</option><option>東京都</option><option>神奈川県</option><option>新潟県</option><option>富山県</option><option>石川県</option><option>福井県</option><option>山梨県</option><option>長野県</option><option>岐阜県</option><option>静岡県</option><option>愛知県</option><option>三重県</option><option>滋賀県</option><option>京都府</option><option>大阪府</option><option>兵庫県</option><option>奈良県</option><option>和歌山県</option><option>鳥取県</option><option>島根県</option><option>岡山県</option><option>広島県</option><option>山口県</option><option>徳島県</option><option>香川県</option><option>愛媛県</option><option>高知県</option><option>福岡県</option><option>佐賀県</option><option>長崎県</option><option>熊本県</option><option>大分県</option><option>宮崎県</option><option>鹿児島県</option><option>沖縄県</option></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>市区町村・番地</label><input id="address" placeholder="○○市○○町1-2-3"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>建物名・部屋番号（任意）</label><input id="address2" placeholder="○○マンション101号室"></div>
+      </div>
+    </div>
+    <div class="nav-row"><button class="btn btn-primary" onclick="goTo(1)">次へ：学歴・資格 →</button></div>
+  </div>
+
+  <!-- Step 1: 学歴・資格 -->
+  <div id="panel-1" class="panel">
+    <div class="card">
+      <div class="card-title">学歴</div>
+      <div id="education-list"></div>
+      <button class="add-btn" onclick="addEntry('education')">＋ 学歴を追加</button>
+    </div>
+    <div class="card">
+      <div class="card-title">資格・免許</div>
+      <div id="cert-list"></div>
+      <button class="add-btn" onclick="addEntry('cert')">＋ 資格・免許を追加</button>
+    </div>
+    <div class="nav-row">
+      <button class="btn" onclick="goTo(0)">← 戻る</button>
+      <button class="btn btn-primary" onclick="goTo(2)">次へ：職務経歴 →</button>
+    </div>
+  </div>
+
+  <!-- Step 2: 職務経歴 -->
+  <div id="panel-2" class="panel">
+    <div class="card">
+      <div class="card-title">職務経歴</div>
+      <div id="work-list"></div>
+      <button class="add-btn" onclick="addEntry('work')">＋ 職歴を追加</button>
+    </div>
+    <div class="nav-row">
+      <button class="btn" onclick="goTo(1)">← 戻る</button>
+      <button class="btn btn-primary" onclick="goTo(3)">次へ：スキル・PR →</button>
+    </div>
+  </div>
+
+  <!-- Step 3: スキル -->
+  <div id="panel-3" class="panel">
+    <div class="card">
+      <div class="card-title">保有スキル</div>
+      <div class="skill-input-row">
+        <input type="text" id="skill-input" placeholder="例：Excel、Python、マネジメント" onkeydown="if(event.key==='Enter'){event.preventDefault();addSkill();}">
+        <button class="skill-add-btn" onclick="addSkill()">追加</button>
+      </div>
+      <div class="skill-tags" id="skill-tags"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">自己PR</div>
+      <textarea id="pr_text" placeholder="強みや実績を具体的に記述してください（200〜400文字程度）"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-title">志望動機（任意）</div>
+      <textarea id="motivation" placeholder="志望動機を入力してください"></textarea>
+    </div>
+    <div class="card">
+      <div class="card-title">その他・特記事項（任意）</div>
+      <textarea id="notes" placeholder="趣味・特技、希望条件など" style="min-height:70px;"></textarea>
+    </div>
+    <div class="nav-row">
+      <button class="btn" onclick="goTo(2)">← 戻る</button>
+      <button class="btn btn-primary" onclick="goTo(4)">確認・出力へ →</button>
+    </div>
+  </div>
+
+  <!-- Step 4: 確認・出力 -->
+  <div id="panel-4" class="panel">
+    <div class="card" id="confirm-content"></div>
+    <div class="nav-row" style="flex-wrap:wrap;">
+      <button class="btn" onclick="goTo(3)" style="flex:0 0 auto;">← 編集に戻る</button>
+      <button class="btn btn-primary" onclick="saveToAirtable()">💾 Airtableに保存</button>
+      <button class="btn btn-green" onclick="downloadResume()">📄 履歴書をWordで保存</button>
+      <button class="btn btn-green" onclick="downloadCareer()">📋 職務経歴書をWordで保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="status-bar">
+  <div class="status-dot" id="status-dot"></div>
+  <span id="status-text">入力内容を記入してください</span>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const AIRTABLE_TOKEN = 'patLuc806WwGDzoWN.7488d4fc15fa3dcccaee2d5417e2330223c09c54a128c63f4f1eb78a80220899';
+const BASE_ID = 'app3Q4lTcGuPX0iIc';
+const TABLE_ID = 'tblUraNv6tpqPatvC';
+
+const state = { education: [], cert: [], work: [], skills: [] };
+let currentStep = 0;
+
+function v(id) { const e = document.getElementById(id); return e ? e.value.trim() : ''; }
+
+function goTo(step) {
+  document.querySelectorAll('.panel').forEach((p, i) => p.classList.toggle('active', i === step));
+  document.querySelectorAll('.progress-step').forEach((s, i) => {
+    s.classList.toggle('active', i === step);
+    s.classList.toggle('done', i < step);
+  });
+  currentStep = step;
+  window.scrollTo(0, 0);
+  if (step === 4) renderConfirm();
+}
+
+function showToast(msg, duration = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function setStatus(state, msg) {
+  const dot = document.getElementById('status-dot');
+  dot.className = 'status-dot ' + state;
+  document.getElementById('status-text').textContent = msg;
+}
+
+function addEntry(type) {
+  const id = Date.now();
+  if (type === 'education') state.education.push({ id, year: '', month: '', school: '', dept: '', status: '卒業' });
+  else if (type === 'cert') state.cert.push({ id, year: '', month: '', name: '' });
+  else if (type === 'work') state.work.push({ id, start_year: '', start_month: '', end_year: '', end_month: '', company: '', dept: '', role: '正社員', desc: '' });
+  renderEntries(type);
+}
+
+function removeEntry(type, id) {
+  state[type] = state[type].filter(e => e.id !== id);
+  renderEntries(type);
+}
+
+function updateEntry(type, id, field, value) {
+  const e = state[type].find(e => e.id === id);
+  if (e) e[field] = value;
+}
+
+function renderEntries(type) {
+  const empty = `<p style="font-size:12px;color:#888780;font-style:italic;margin-bottom:8px;">まだ追加されていません</p>`;
+  if (type === 'education') {
+    document.getElementById('education-list').innerHTML = state.education.length === 0 ? empty : state.education.map(e => `
+      <div class="entry-card">
+        <button class="remove-btn" onclick="removeEntry('education',${e.id})">×</button>
+        <div class="row row-3" style="margin-bottom:8px;">
+          <div class="field"><label>年</label><input type="number" value="${e.year}" placeholder="2015" oninput="updateEntry('education',${e.id},'year',this.value)"></div>
+          <div class="field"><label>月</label><input type="number" min="1" max="12" value="${e.month}" placeholder="4" oninput="updateEntry('education',${e.id},'month',this.value)"></div>
+          <div class="field"><label>区分</label><select onchange="updateEntry('education',${e.id},'status',this.value)">
+            ${['入学','卒業','中退','修了','在学中'].map(s=>`<option ${e.status===s?'selected':''}>${s}</option>`).join('')}
+          </select></div>
+        </div>
+        <div class="row row-2">
+          <div class="field"><label>学校名</label><input value="${e.school}" placeholder="○○大学" oninput="updateEntry('education',${e.id},'school',this.value)"></div>
+          <div class="field"><label>学部・学科</label><input value="${e.dept}" placeholder="○○学部" oninput="updateEntry('education',${e.id},'dept',this.value)"></div>
+        </div>
+      </div>`).join('');
+  } else if (type === 'cert') {
+    document.getElementById('cert-list').innerHTML = state.cert.length === 0 ? empty : state.cert.map(e => `
+      <div class="entry-card">
+        <button class="remove-btn" onclick="removeEntry('cert',${e.id})">×</button>
+        <div class="row row-3">
+          <div class="field"><label>年</label><input type="number" value="${e.year}" placeholder="2018" oninput="updateEntry('cert',${e.id},'year',this.value)"></div>
+          <div class="field"><label>月</label><input type="number" min="1" max="12" value="${e.month}" placeholder="6" oninput="updateEntry('cert',${e.id},'month',this.value)"></div>
+          <div class="field" style="grid-column:1/-1"><label>資格・免許名</label><input value="${e.name}" placeholder="普通自動車第一種運転免許" oninput="updateEntry('cert',${e.id},'name',this.value)"></div>
+        </div>
+      </div>`).join('');
+  } else if (type === 'work') {
+    document.getElementById('work-list').innerHTML = state.work.length === 0 ? empty : state.work.map(e => `
+      <div class="entry-card">
+        <button class="remove-btn" onclick="removeEntry('work',${e.id})">×</button>
+        <div class="row row-2" style="margin-bottom:8px;">
+          <div class="field"><label>開始年月</label><div style="display:flex;gap:6px;">
+            <input type="number" value="${e.start_year}" placeholder="年" style="width:72px" oninput="updateEntry('work',${e.id},'start_year',this.value)">
+            <input type="number" min="1" max="12" value="${e.start_month}" placeholder="月" style="width:58px" oninput="updateEntry('work',${e.id},'start_month',this.value)">
+          </div></div>
+          <div class="field"><label>終了年月（現職は空欄）</label><div style="display:flex;gap:6px;">
+            <input type="number" value="${e.end_year}" placeholder="年" style="width:72px" oninput="updateEntry('work',${e.id},'end_year',this.value)">
+            <input type="number" min="1" max="12" value="${e.end_month}" placeholder="月" style="width:58px" oninput="updateEntry('work',${e.id},'end_month',this.value)">
+          </div></div>
+        </div>
+        <div class="row row-3" style="margin-bottom:8px;">
+          <div class="field" style="grid-column:1/3"><label>会社名</label><input value="${e.company}" placeholder="株式会社○○" oninput="updateEntry('work',${e.id},'company',this.value)"></div>
+          <div class="field"><label>雇用形態</label><select onchange="updateEntry('work',${e.id},'role',this.value)">
+            ${['正社員','契約社員','派遣社員','アルバイト','業務委託'].map(r=>`<option ${e.role===r?'selected':''}>${r}</option>`).join('')}
+          </select></div>
+        </div>
+        <div class="row" style="margin-bottom:8px;">
+          <div class="field"><label>部署・役職</label><input value="${e.dept}" placeholder="営業部 係長" oninput="updateEntry('work',${e.id},'dept',this.value)"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>業務内容・実績</label><textarea placeholder="担当業務・成果・実績などを記入してください" oninput="updateEntry('work',${e.id},'desc',this.value)">${e.desc}</textarea></div>
+        </div>
+      </div>`).join('');
+  }
+}
+
+function addSkill() {
+  const input = document.getElementById('skill-input');
+  const val = input.value.trim();
+  if (!val) return;
+  state.skills.push(val);
+  input.value = '';
+  renderSkills();
+}
+
+function removeSkill(i) { state.skills.splice(i, 1); renderSkills(); }
+
+function renderSkills() {
+  document.getElementById('skill-tags').innerHTML = state.skills.map((s, i) =>
+    `<div class="skill-tag">${s}<button onclick="removeSkill(${i})">×</button></div>`).join('');
+}
+
+function fmtYM(y, m) { if (!y) return ''; return m ? `${y}年${m}月` : `${y}年`; }
+
+function collectData() {
+  return {
+    name: v('name'), name_kana: v('name_kana'), birth_date: v('birth_date'),
+    gender: v('gender'), phone: v('phone'), email: v('email'),
+    address: [v('zip') ? `〒${v('zip')}` : '', v('pref'), v('address'), v('address2')].filter(Boolean).join(' '),
+    education: state.education, cert: state.cert, work: state.work,
+    skills: state.skills, pr_text: v('pr_text'), motivation: v('motivation'), notes: v('notes')
+  };
+}
+
+function renderConfirm() {
+  const d = collectData();
+  const eduHtml = state.education.map(e => `<tr><td style="color:#5f5e5a;width:130px;padding:3px 8px;">${fmtYM(e.year,e.month)}</td><td style="padding:3px 8px;">${e.school} ${e.dept} ${e.status}</td></tr>`).join('');
+  const certHtml = state.cert.map(e => `<tr><td style="color:#5f5e5a;width:130px;padding:3px 8px;">${fmtYM(e.year,e.month)}</td><td style="padding:3px 8px;">${e.name}</td></tr>`).join('');
+  const workHtml = state.work.map(e => `<tr><td style="color:#5f5e5a;width:130px;padding:3px 8px;vertical-align:top;">${fmtYM(e.start_year,e.start_month)}〜${e.end_year?fmtYM(e.end_year,e.end_month):'現在'}</td><td style="padding:3px 8px;">${e.company}（${e.role}）${e.dept?'<br><small style="color:#5f5e5a">'+e.dept+'</small>':''}</td></tr>`).join('');
+  document.getElementById('confirm-content').innerHTML = `
+    <div class="card-title">入力内容の確認</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;">
+      <tr><td style="color:#5f5e5a;width:130px;padding:3px 8px;">氏名</td><td style="padding:3px 8px;font-weight:600;">${d.name||'—'} ${d.name_kana?'（'+d.name_kana+'）':''}</td></tr>
+      ${d.birth_date?`<tr><td style="color:#5f5e5a;padding:3px 8px;">生年月日</td><td style="padding:3px 8px;">${d.birth_date}</td></tr>`:''}
+      ${d.phone?`<tr><td style="color:#5f5e5a;padding:3px 8px;">電話</td><td style="padding:3px 8px;">${d.phone}</td></tr>`:''}
+      ${d.email?`<tr><td style="color:#5f5e5a;padding:3px 8px;">メール</td><td style="padding:3px 8px;">${d.email}</td></tr>`:''}
+      ${d.address?`<tr><td style="color:#5f5e5a;padding:3px 8px;">住所</td><td style="padding:3px 8px;">${d.address}</td></tr>`:''}
+    </table>
+    ${state.education.length>0?`<div style="font-size:12px;font-weight:600;color:#5f5e5a;margin-bottom:4px;">学歴</div><table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px;">${eduHtml}</table>`:''}
+    ${state.cert.length>0?`<div style="font-size:12px;font-weight:600;color:#5f5e5a;margin-bottom:4px;">資格</div><table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px;">${certHtml}</table>`:''}
+    ${state.work.length>0?`<div style="font-size:12px;font-weight:600;color:#5f5e5a;margin-bottom:4px;">職歴</div><table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px;">${workHtml}</table>`:''}
+    ${state.skills.length>0?`<div style="font-size:12px;font-weight:600;color:#5f5e5a;margin-bottom:6px;">スキル</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">${state.skills.map(s=>`<span style="background:#e6f1fb;border:1px solid #b5d4f4;padding:3px 10px;border-radius:99px;font-size:12px;color:#185FA5;">${s}</span>`).join('')}</div>`:''}
+    ${d.pr_text?`<div style="font-size:12px;font-weight:600;color:#5f5e5a;margin-bottom:4px;">自己PR</div><p style="font-size:13px;white-space:pre-wrap;margin-bottom:12px;">${d.pr_text}</p>`:''}
+  `;
+}
+
+async function saveToAirtable() {
+  const d = collectData();
+  if (!d.name) { showToast('⚠️ 氏名を入力してください'); return; }
+  setStatus('saving', 'Airtableに保存中...');
+  try {
+    const fields = {
+      '氏名': d.name,
+      'ふりがな': d.name_kana,
+      '生年月日': d.birth_date,
+      '性別': d.gender,
+      '電話番号': d.phone,
+      'メールアドレス': d.email,
+      '住所': d.address,
+      '学歴': state.education.map(e=>`${fmtYM(e.year,e.month)} ${e.school} ${e.dept} ${e.status}`).join('\n'),
+      '資格・免許': state.cert.map(e=>`${fmtYM(e.year,e.month)} ${e.name}`).join('\n'),
+      '職務経歴': state.work.map(e=>`${fmtYM(e.start_year,e.start_month)}〜${e.end_year?fmtYM(e.end_year,e.end_month):'現在'} ${e.company}（${e.role}）${e.dept?' '+e.dept:''}\n${e.desc}`).join('\n\n'),
+      'スキル': state.skills.join('、'),
+      '自己PR': d.pr_text,
+      '志望動機': d.motivation,
+      '特記事項': d.notes,
+      '登録日': new Date().toISOString().split('T')[0]
+    };
+    const res = await fetch(`https://api.airtable.com/v0/${BASE_ID}/${TABLE_ID}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || 'API error');
+    }
+    setStatus('saved', `保存完了 — ${new Date().toLocaleTimeString('ja-JP')}`);
+    showToast('✅ Airtableに保存しました！');
+  } catch (e) {
+    setStatus('error', 'エラー: ' + e.message);
+    showToast('❌ 保存に失敗しました: ' + e.message, 4000);
+  }
+}
+
+function downloadResume() {
+  const d = collectData();
+  if (!d.name) { showToast('⚠️ 氏名を入力してください'); return; }
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+    AlignmentType, WidthType, BorderStyle, ShadingType, HeadingLevel } = docx;
+
+  const border = { style: BorderStyle.SINGLE, size: 1, color: 'AAAAAA' };
+  const borders = { top: border, bottom: border, left: border, right: border };
+  const noBorder = { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } };
+  const cell = (text, w, bold=false, bg=null) => new TableCell({
+    borders, width: { size: w, type: WidthType.DXA },
+    shading: bg ? { fill: bg, type: ShadingType.CLEAR } : undefined,
+    margins: { top: 60, bottom: 60, left: 100, right: 100 },
+    children: [new Paragraph({ children: [new TextRun({ text, bold, font: 'MS Gothic', size: 22 })] })]
+  });
+
+  const infoRows = [];
+  const addRow = (label, val) => {
+    if (!val) return;
+    infoRows.push(new TableRow({ children: [
+      cell(label, 1600, true, 'EEF2F7'),
+      cell(val, 7426)
+    ]}));
+  };
+  addRow('氏名', d.name + (d.name_kana ? `（${d.name_kana}）` : ''));
+  addRow('生年月日', d.birth_date);
+  addRow('性別', d.gender);
+  addRow('電話番号', d.phone);
+  addRow('メールアドレス', d.email);
+  addRow('住所', d.address);
+
+  const eduRows = state.education.map(e => new TableRow({ children: [
+    cell(fmtYM(e.year, e.month), 1600, false, 'F5F5F5'),
+    cell(`${e.school} ${e.dept} ${e.status}`, 7426)
+  ]}));
+  const certRows = state.cert.map(e => new TableRow({ children: [
+    cell(fmtYM(e.year, e.month), 1600, false, 'F5F5F5'),
+    cell(`${e.name} 取得`, 7426)
+  ]}));
+  const workRows = state.work.map(e => {
+    const end = e.end_year ? fmtYM(e.end_year, e.end_month) : '現在';
+    return new TableRow({ children: [
+      cell(`${fmtYM(e.start_year,e.start_month)}〜${end}`, 1600, false, 'F5F5F5'),
+      cell(`${e.company}（${e.role}）${e.dept?' '+e.dept:''}`, 7426)
+    ]});
+  });
+
+  const section = (title) => new Paragraph({
+    children: [new TextRun({ text: title, bold: true, font: 'MS Gothic', size: 26, color: '1a1a18' })],
+    spacing: { before: 240, after: 80 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '185FA5', space: 1 } }
+  });
+
+  const children = [
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: '履　歴　書', bold: true, font: 'MS Gothic', size: 40 })], spacing: { after: 120 } }),
+    new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `作成日：${new Date().toLocaleDateString('ja-JP')}`, font: 'MS Gothic', size: 18, color: '888780' })], spacing: { after: 200 } }),
+    section('基本情報'),
+    new Table({ width: { size: 9026, type: WidthType.DXA }, columnWidths: [1600, 7426], rows: infoRows }),
+  ];
+
+  if (state.education.length > 0) {
+    children.push(section('学歴'));
+    children.push(new Table({ width: { size: 9026, type: WidthType.DXA }, columnWidths: [1600, 7426], rows: eduRows }));
+  }
+  if (state.cert.length > 0) {
+    children.push(section('資格・免許'));
+    children.push(new Table({ width: { size: 9026, type: WidthType.DXA }, columnWidths: [1600, 7426], rows: certRows }));
+  }
+  if (state.work.length > 0) {
+    children.push(section('職歴（概要）'));
+    children.push(new Table({ width: { size: 9026, type: WidthType.DXA }, columnWidths: [1600, 7426], rows: workRows }));
+  }
+  if (d.pr_text) {
+    children.push(section('自己PR'));
+    children.push(new Paragraph({ children: [new TextRun({ text: d.pr_text, font: 'MS Gothic', size: 22 })], spacing: { after: 80 } }));
+  }
+  if (d.motivation) {
+    children.push(section('志望動機'));
+    children.push(new Paragraph({ children: [new TextRun({ text: d.motivation, font: 'MS Gothic', size: 22 })], spacing: { after: 80 } }));
+  }
+  if (d.notes) {
+    children.push(section('特記事項'));
+    children.push(new Paragraph({ children: [new TextRun({ text: d.notes, font: 'MS Gothic', size: 22 })] }));
+  }
+
+  const doc = new Document({ sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 } } }, children }] });
+  Packer.toBlob(doc).then(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `履歴書_${d.name}.docx`;
+    a.click();
+    showToast('📄 履歴書をダウンロードしました');
+  });
+}
+
+function downloadCareer() {
+  const d = collectData();
+  if (!d.name) { showToast('⚠️ 氏名を入力してください'); return; }
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+    AlignmentType, WidthType, BorderStyle, ShadingType } = docx;
+
+  const border = { style: BorderStyle.SINGLE, size: 1, color: 'AAAAAA' };
+  const borders = { top: border, bottom: border, left: border, right: border };
+  const cell = (text, w, bold=false, bg=null) => new TableCell({
+    borders, width: { size: w, type: WidthType.DXA },
+    shading: bg ? { fill: bg, type: ShadingType.CLEAR } : undefined,
+    margins: { top: 80, bottom: 80, left: 120, right: 120 },
+    children: [new Paragraph({ children: [new TextRun({ text: text||'', bold, font: 'MS Gothic', size: 22 })] })]
+  });
+
+  const section = (title) => new Paragraph({
+    children: [new TextRun({ text: title, bold: true, font: 'MS Gothic', size: 28, color: '0F6E56' })],
+    spacing: { before: 320, after: 100 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '0F6E56', space: 1 } }
+  });
+
+  const children = [
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: '職務経歴書', bold: true, font: 'MS Gothic', size: 40 })], spacing: { after: 80 } }),
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: d.name, font: 'MS Gothic', size: 28 })], spacing: { after: 60 } }),
+    new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `作成日：${new Date().toLocaleDateString('ja-JP')}`, font: 'MS Gothic', size: 18, color: '888780' })], spacing: { after: 240 } }),
+  ];
+
+  if (state.work.length > 0) {
+    children.push(section('職務経歴'));
+    state.work.forEach(e => {
+      const end = e.end_year ? fmtYM(e.end_year, e.end_month) : '現在';
+      children.push(new Paragraph({ children: [new TextRun({ text: `■ ${e.company}`, bold: true, font: 'MS Gothic', size: 24 })], spacing: { before: 160, after: 60 } }));
+      children.push(new Table({
+        width: { size: 9026, type: WidthType.DXA }, columnWidths: [1800, 7226],
+        rows: [
+          new TableRow({ children: [cell('在籍期間', 1800, true, 'EEF2F7'), cell(`${fmtYM(e.start_year,e.start_month)} 〜 ${end}（${e.role}）`, 7226)] }),
+          ...(e.dept ? [new TableRow({ children: [cell('部署・役職', 1800, true, 'EEF2F7'), cell(e.dept, 7226)] })] : []),
+          ...(e.desc ? [new TableRow({ children: [cell('業務内容', 1800, true, 'EEF2F7'), cell(e.desc, 7226)] })] : []),
+        ]
+      }));
+    });
+  }
+
+  if (state.skills.length > 0) {
+    children.push(section('保有スキル'));
+    children.push(new Paragraph({ children: [new TextRun({ text: state.skills.join('　／　'), font: 'MS Gothic', size: 22 })], spacing: { after: 100 } }));
+  }
+  if (d.pr_text) {
+    children.push(section('自己PR'));
+    children.push(new Paragraph({ children: [new TextRun({ text: d.pr_text, font: 'MS Gothic', size: 22 })], spacing: { after: 100 } }));
+  }
+  if (d.motivation) {
+    children.push(section('志望動機'));
+    children.push(new Paragraph({ children: [new TextRun({ text: d.motivation, font: 'MS Gothic', size: 22 })] }));
+  }
+
+  const doc = new Document({ sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 } } }, children }] });
+  Packer.toBlob(doc).then(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `職務経歴書_${d.name}.docx`;
+    a.click();
+    showToast('📋 職務経歴書をダウンロードしました');
+  });
+}
+
+renderEntries('education');
+renderEntries('cert');
+renderEntries('work');
+</script>
+</body>
+</html>
